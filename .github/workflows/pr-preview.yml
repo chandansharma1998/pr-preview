@@ -1,0 +1,35 @@
+name: PR Preview (comment + optional Jenkins trigger)
+
+on:
+  pull_request:
+    types: [opened, reopened, synchronize]
+
+jobs:
+  comment-preview-url:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Compute preview URL (Minikube + nip.io)
+        id: prep
+        run: |
+          echo "pr=${{ github.event.pull_request.number }}" >> $GITHUB_OUTPUT
+      - name: Comment URL
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const pr = ${{ steps.prep.outputs.pr }}
+            const msg = `Preview environment will be available at: http://pr-${pr}.<your-minikube-ip>.nip.io/`
+            github.rest.issues.createComment({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+              body: msg
+            })
+  trigger-jenkins:
+    if: ${{ always() }}
+    runs-on: ubuntu-latest
+    steps:
+      - name: Trigger Jenkins with PR number
+        if: ${{ secrets.JENKINS_URL && secrets.JENKINS_USER && secrets.JENKINS_TOKEN && secrets.JENKINS_JOB }}
+        run: |
+          PR=${{ github.event.pull_request.number }}
+          curl -u "${{ secrets.JENKINS_USER }}:${{ secrets.JENKINS_TOKEN }}"             "${{ secrets.JENKINS_URL }}/job/${{ secrets.JENKINS_JOB }}/buildWithParameters?PR_NUMBER=${PR}&ACTION=apply"

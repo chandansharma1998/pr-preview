@@ -1,0 +1,70 @@
+pipeline {
+  agent any
+  options { timestamps() }
+
+  environment {
+    APP_NAME = "pr-preview-app"
+    REGISTRY = ""
+  }
+
+  triggers { pollSCM('@daily') }
+
+  stages {
+    stage('Prep Minikube Docker Env') {
+      steps {
+        powershell '''
+& minikube -p minikube docker-env | Invoke-Expression
+$env:MINIKUBE_IP = (minikube ip)
+Write-Host "MINIKUBE_IP=$env:MINIKUBE_IP"
+        '''
+      }
+    }
+
+    stage('Build') {
+      steps {
+        dir('app') {
+          powershell '''
+$ErrorActionPreference = "Stop"
+docker build -t ${env:APP_NAME}:pr-$env:CHANGE_ID .
+          '''
+        }
+      }
+    }
+
+    stage('Terraform Apply (Preview)') {
+      when { expression { return env.CHANGE_ID != null } }
+      steps {
+        powershell '''
+$ErrorActionPreference = "Stop"
+./jenkins/scripts/set-kubeconfig.ps1
+$MINIKUBE_IP = $env:MINIKUBE_IP
+if ([string]::IsNullOrEmpty($MINIKUBE_IP)) { $MINIKUBE_IP = (minikube ip) }
+$HOST="pr-$env:CHANGE_ID.$MINIKUBE_IP.nip.io"
+Write-Host "Preview Host: $HOST"
+
+cd terraform
+terraform init -input=false
+terraform apply -auto-approve -input=false `
+  -var pr_number="$env:CHANGE_ID" `
+  -var image="${env:APP_NAME}:pr-$env:CHANGE_ID" `
+  -var host="$HOST"
+
+Write-Host "Preview ready: http://$HOST/"
+        '''
+      }
+    }
+
+    stage('Run Tests') {
+      steps {
+        powershell '''
+Write-Host "Running tests for PR $env:CHANGE_ID ..."
+        '''
+      }
+    }
+  }
+
+  post {
+    success { echo "Build succeeded." }
+    failure { echo "Build failed." }
+  }
+}
