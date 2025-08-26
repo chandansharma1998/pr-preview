@@ -38,28 +38,20 @@ pipeline {
 
         stage('Deploy with Helm') {
           steps {
-              script {
-                  def prId = env.CHANGE_ID ?: "local"
-                  def image = "${env.DOCKERHUB_USER}/pr-preview-app:pr-${prId}"
+              bat """
+                  set NAMESPACE=pr-preview
+                  for /f %%i in ('minikube ip') do set MINIKUBE_IP=%%i
 
-                  powershell """
-                      $pr = "$prId"
-                      $minikubeIp = (minikube ip)
+                  echo Creating namespace %NAMESPACE% if not exists...
+                  kubectl create namespace %NAMESPACE% --dry-run=client -o yaml | kubectl apply -f -
 
-                      echo "Creating namespace pr-$pr if not exists..."
-                      kubectl create namespace pr-$pr --dry-run=client -o yaml | kubectl apply -f -
+                  echo Deploying with Helm...
+                  echo helm upgrade --install pr-preview ./helm-chart --namespace %NAMESPACE% --set image.repository=${DOCKERHUB_USER}/pr-preview-app --set image.tag=latest --set image.pullPolicy=Always --set minikubeIp=%MINIKUBE_IP%
 
-                      echo "Deploying with Helm..."
-                      helm upgrade --install pr-$pr ./helm-chart `
-                          --namespace pr-$pr `
-                          --set image.repository=${env.DOCKERHUB_USER}/pr-preview-app `
-                          --set image.tag=pr-$pr `
-                          --set prNumber=$pr `
-                          --set minikubeIp=$minikubeIp
-                  """
-              }
+                  helm upgrade --install pr-preview ./helm-chart --namespace %NAMESPACE% --set image.repository=${DOCKERHUB_USER}/pr-preview-app --set image.tag=latest --set image.pullPolicy=Always --set minikubeIp=%MINIKUBE_IP%
+              """
           }
-        }
+        } 
 
         stage('Verify Deployment') {
             steps {
