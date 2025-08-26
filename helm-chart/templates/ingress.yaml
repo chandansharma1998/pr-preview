@@ -1,9 +1,8 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: pr-{{ .Values.prNumber }}-ing
-  annotations:
-    kubernetes.io/ingress.class: nginx
+  name: {{ .Release.Name }}-ing
+  namespace: {{ .Release.Namespace }}
 spec:
   rules:
     - host: pr-{{ .Values.prNumber }}.{{ .Values.minikubeIp }}.nip.io
@@ -13,6 +12,6 @@ spec:
             pathType: Prefix
             backend:
               service:
-                name: pr-{{ .Values.prNumber }}-svc
+                name: {{ .Release.Name }}
                 port:
                   number: 80
