@@ -16,7 +16,8 @@ pipeline {
         stage('Build & Push Image') {
           steps {
               script {
-                  def image = "${env.DOCKERHUB_USER}/pr-preview-app:pr-${env.CHANGE_ID}"
+                  def prId = env.CHANGE_ID ?: "local"
+                  def image = "${env.DOCKERHUB_USER}/pr-preview-app:pr-${prId}"
 
                   withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', 
                                                     usernameVariable: 'DOCKERHUB_USER', 
