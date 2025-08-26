@@ -1,0 +1,11 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: pr-{{ .Values.prNumber }}-svc
+spec:
+  selector:
+    app: pr-{{ .Values.prNumber }}-app
+  ports:
+    - protocol: TCP
+      port: 80
+      targetPort: 8080

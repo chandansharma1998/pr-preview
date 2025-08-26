@@ -1,9 +1,9 @@
-# Simple Node app Dockerfile
-FROM node:18-alpine
+FROM golang:1.22 as builder
 WORKDIR /app
-COPY package.json package-lock.json* ./
-RUN npm install --production || npm install --production
 COPY . .
-ENV PORT=3000
-EXPOSE 3000
-CMD ["npm", "start"]
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o server main.go
+
+FROM alpine:3.18
+WORKDIR /app
+COPY --from=builder /app/server .
+CMD ["./server"]

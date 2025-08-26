@@ -1,0 +1,19 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: pr-{{ .Values.prNumber }}-app
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: pr-{{ .Values.prNumber }}-app
+  template:
+    metadata:
+      labels:
+        app: pr-{{ .Values.prNumber }}-app
+    spec:
+      containers:
+        - name: app
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          ports:
+            - containerPort: 8080
