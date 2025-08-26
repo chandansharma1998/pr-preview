@@ -71,7 +71,7 @@ pipeline {
                   set NAMESPACE=pr-%PR_NUMBER%
 
                   echo Waiting for deployment to become ready...
-                  kubectl rollout status deployment/%NAMESPACE% --namespace=%NAMESPACE% --timeout=120s
+                  kubectl rollout status deployment/%NAMESPACE%-app --namespace=%NAMESPACE% --timeout=120s
 
                   echo Checking service...
                   kubectl get svc -n %NAMESPACE%
