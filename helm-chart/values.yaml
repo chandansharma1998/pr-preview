@@ -1,14 +1,7 @@
 image:
-  repository: ""
-  tag: "latest"
+  repository: sharmachandan487/pr-preview-app
+  tag: local
+  pullPolicy: Always
 
-prNumber: ""
-minikubeIp: ""
-
-service:
-  type: ClusterIP
-  port: 80
-
-ingress:
-  enabled: true
-  className: "nginx"
+prNumber: "local"
+minikubeIp: "127.0.0.1"

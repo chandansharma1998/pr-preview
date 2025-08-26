@@ -14,54 +14,75 @@ pipeline {
         }
 
         stage('Build & Push Image') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKERHUB_USER',
-                    passwordVariable: 'DOCKERHUB_PASS'
-                )]) {
-                    powershell """
-                        echo "Logging in to DockerHub..."
-                        docker login -u $env:DOCKERHUB_USER -p $env:DOCKERHUB_PASS
+          steps {
+              script {
+                  def prId = env.CHANGE_ID ?: "local"
+                  def image = "${env.DOCKERHUB_USER}/pr-preview-app:pr-${prId}"
 
-                        echo "Building image..."
-                        docker build -t $env:DOCKER_IMAGE:pr-$env:CHANGE_ID ./app
-
-                        echo "Pushing image..."
-                        docker push $env:DOCKER_IMAGE:pr-$env:CHANGE_ID
-                    """
-                }
-            }
+                  withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', 
+                                                    usernameVariable: 'DOCKERHUB_USER', 
+                                                    passwordVariable: 'DOCKERHUB_PASS')]) {
+                      bat """
+                          docker --version
+                          echo Logging in to DockerHub...
+                          echo %DOCKERHUB_PASS% | docker login -u %DOCKERHUB_USER% --password-stdin
+                          echo Building image: ${image}
+                          docker build -t ${image} app
+                          echo Pushing image: ${image}
+                          docker push ${image}
+                      """
+                  }
+              }
+          }
         }
 
         stage('Deploy with Helm') {
-            steps {
-                powershell """
-                    $pr = $env:CHANGE_ID
-                    $minikubeIp = (minikube ip)
+          steps {
+              bat """
+                  REM Use PR number if available, else fallback to 'local'
+                  set PR_NUMBER=%CHANGE_ID%
+                  if "%PR_NUMBER%"=="" set PR_NUMBER=local
 
-                    echo "Creating namespace pr-$pr if not exists..."
-                    kubectl create namespace pr-$pr --dry-run=client -o yaml | kubectl apply -f -
+                  set NAMESPACE=pr-%PR_NUMBER%
 
-                    echo "Deploying with Helm..."
-                    helm upgrade --install pr-$pr ./helm-chart `
-                        --namespace pr-$pr `
-                        --set image.repository=$env:DOCKER_IMAGE `
-                        --set image.tag=pr-$pr `
-                        --set prNumber=$pr `
-                        --set minikubeIp=$minikubeIp
-                """
-            }
+                  for /F %%i in ('minikube ip') do set MINIKUBE_IP=%%i
+
+                  echo Creating namespace %NAMESPACE% if not exists...
+                  kubectl create namespace %NAMESPACE% --dry-run=client -o yaml | kubectl apply -f -
+
+                  echo Deploying with Helm...
+                  helm upgrade --install %NAMESPACE% ./helm-chart ^
+                      --namespace %NAMESPACE% ^
+                      --set image.repository=%DOCKER_IMAGE% ^
+                      --set image.tag=pr-%PR_NUMBER% ^
+                      --set image.pullPolicy=Always ^
+                      --set prNumber=%PR_NUMBER% ^
+                      --set minikubeIp=%MINIKUBE_IP%
+              """
+          }
         }
 
         stage('Verify Deployment') {
-            steps {
-                powershell """
-                    $pr = $env:CHANGE_ID
-                    kubectl get pods -n pr-$pr
-                    kubectl get ingress -n pr-$pr
-                """
-            }
+          steps {
+              bat """
+                  set PR_NUMBER=%CHANGE_ID%
+                  if "%PR_NUMBER%"=="" set PR_NUMBER=local
+
+                  set NAMESPACE=pr-%PR_NUMBER%
+
+                  echo Waiting for deployment to become ready...
+                  kubectl rollout status deployment/%NAMESPACE%-app --namespace=%NAMESPACE% --timeout=120s
+
+                  echo Checking service...
+                  kubectl get svc -n %NAMESPACE%
+
+                  for /F %%i in ('minikube ip') do set MINIKUBE_IP=%%i
+                  set URL=http://pr-%PR_NUMBER%.%MINIKUBE_IP%.nip.io
+
+                  echo Verifying URL: %URL%
+                  curl --fail %URL% || (echo "Deployment verification failed" && exit 1)
+              """
+          }
         }
     }
 

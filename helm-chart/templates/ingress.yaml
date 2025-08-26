@@ -1,18 +1,19 @@
 apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
-  name: pr-{{ .Values.prNumber }}-ing
+  name: {{ .Release.Name }}-ingress
+  namespace: {{ .Release.Namespace }}
   annotations:
     kubernetes.io/ingress.class: nginx
 spec:
   rules:
-    - host: pr-{{ .Values.prNumber }}.{{ .Values.minikubeIp }}.nip.io
-      http:
-        paths:
-          - path: /
-            pathType: Prefix
-            backend:
-              service:
-                name: pr-{{ .Values.prNumber }}-svc
-                port:
-                  number: 80
+  - host: {{ .Values.prNumber }}.{{ .Values.minikubeIp }}.nip.io
+    http:
+      paths:
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: {{ .Release.Name }}-svc
+            port:
+              number: 80
