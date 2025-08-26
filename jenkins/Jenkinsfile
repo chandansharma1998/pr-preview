@@ -14,24 +14,25 @@ pipeline {
         }
 
         stage('Build & Push Image') {
-            steps {
-                withCredentials([usernamePassword(
-                    credentialsId: 'dockerhub-creds',
-                    usernameVariable: 'DOCKERHUB_USER',
-                    passwordVariable: 'DOCKERHUB_PASS'
-                )]) {
-                    powershell """
-                        echo "Logging in to DockerHub..."
-                        docker login -u $env:DOCKERHUB_USER -p $env:DOCKERHUB_PASS
+          steps {
+              script {
+                  def image = "${env.DOCKERHUB_USER}/pr-preview-app:pr-${env.CHANGE_ID}"
 
-                        echo "Building image..."
-                        docker build -t $env:DOCKER_IMAGE:pr-$env:CHANGE_ID ./app
-
-                        echo "Pushing image..."
-                        docker push $env:DOCKER_IMAGE:pr-$env:CHANGE_ID
-                    """
-                }
-            }
+                  withCredentials([usernamePassword(credentialsId: 'dockerhub-creds', 
+                                                    usernameVariable: 'DOCKERHUB_USER', 
+                                                    passwordVariable: 'DOCKERHUB_PASS')]) {
+                      bat """
+                          docker --version
+                          echo Logging in to DockerHub...
+                          echo %DOCKERHUB_PASS% | docker login -u %DOCKERHUB_USER% --password-stdin
+                          echo Building image: ${image}
+                          docker build -t ${image} app
+                          echo Pushing image: ${image}
+                          docker push ${image}
+                      """
+                  }
+              }
+          }
         }
 
         stage('Deploy with Helm') {
