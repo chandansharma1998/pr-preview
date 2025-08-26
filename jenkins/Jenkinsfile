@@ -39,19 +39,22 @@ pipeline {
         stage('Deploy with Helm') {
           steps {
               bat """
-                  set NAMESPACE=pr-preview
+                  set NAMESPACE=pr-%CHANGE_ID%
                   for /f %%i in ('minikube ip') do set MINIKUBE_IP=%%i
 
-                  echo Creating namespace %NAMESPACE% if not exists...
                   kubectl create namespace %NAMESPACE% --dry-run=client -o yaml | kubectl apply -f -
 
-                  echo Deploying with Helm...
-                  echo helm upgrade --install pr-preview ./helm-chart --namespace %NAMESPACE% --set image.repository=${DOCKERHUB_USER}/pr-preview-app --set image.tag=latest --set image.pullPolicy=Always --set minikubeIp=%MINIKUBE_IP%
-
-                  helm upgrade --install pr-preview ./helm-chart --namespace %NAMESPACE% --set image.repository=${DOCKERHUB_USER}/pr-preview-app --set image.tag=latest --set image.pullPolicy=Always --set minikubeIp=%MINIKUBE_IP%
+                  helm upgrade --install pr-%CHANGE_ID% ./helm-chart ^
+                    --namespace %NAMESPACE% ^
+                    --set image.repository=${DOCKERHUB_USER}/pr-preview-app ^
+                    --set image.tag=latest ^
+                    --set image.pullPolicy=Always ^
+                    --set prNumber=%CHANGE_ID% ^
+                    --set minikubeIp=%MINIKUBE_IP%
               """
           }
-        } 
+        }
+
 
         stage('Verify Deployment') {
             steps {
