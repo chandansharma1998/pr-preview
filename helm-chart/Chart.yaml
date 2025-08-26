@@ -1,0 +1,4 @@
+apiVersion: v2
+name: pr-preview-app
+version: 0.1.0
+description: Helm chart for PR preview environments
