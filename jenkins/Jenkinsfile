@@ -63,13 +63,26 @@ pipeline {
         }
 
         stage('Verify Deployment') {
-            steps {
-                powershell """
-                    $pr = $env:CHANGE_ID
-                    kubectl get pods -n pr-$pr
-                    kubectl get ingress -n pr-$pr
-                """
-            }
+          steps {
+              bat """
+                  set PR_NUMBER=%CHANGE_ID%
+                  if "%PR_NUMBER%"=="" set PR_NUMBER=local
+
+                  set NAMESPACE=pr-%PR_NUMBER%
+
+                  echo Waiting for deployment to become ready...
+                  kubectl rollout status deployment/%NAMESPACE% --namespace=%NAMESPACE% --timeout=120s
+
+                  echo Checking service...
+                  kubectl get svc -n %NAMESPACE%
+
+                  for /F %%i in ('minikube ip') do set MINIKUBE_IP=%%i
+                  set URL=http://pr-%PR_NUMBER%.%MINIKUBE_IP%.nip.io
+
+                  echo Verifying URL: %URL%
+                  curl --fail %URL% || (echo "Deployment verification failed" && exit 1)
+              """
+          }
         }
     }
 
