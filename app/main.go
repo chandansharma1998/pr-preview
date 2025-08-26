@@ -7,7 +7,7 @@ import (
 )
 
 func handler(w http.ResponseWriter, r *http.Request) {
-	fmt.Fprintf(w, "Hello from PR Preview! PR=%s", os.Getenv("PR_NUMBER"))
+	fmt.Fprintf(w, "Hello from PR Preview!!! PR=%s", os.Getenv("PR_NUMBER"))
 }
 
 func main() {
