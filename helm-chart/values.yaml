@@ -1,7 +1,7 @@
 image:
-  repository: nginx
-  tag: latest
-  pullPolicy: IfNotPresent
+  repository: sharmachandan487/pr-preview-app
+  tag: local
+  pullPolicy: Always
 
 prNumber: "local"
 minikubeIp: "127.0.0.1"
