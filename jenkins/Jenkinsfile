@@ -54,7 +54,7 @@ pipeline {
                   helm upgrade --install %NAMESPACE% ./helm-chart ^
                       --namespace %NAMESPACE% ^
                       --set image.repository=%DOCKER_IMAGE% ^
-                      --set image.tag=latest ^
+                      --set image.tag=pr-%PR_NUMBER% ^
                       --set image.pullPolicy=Always ^
                       --set prNumber=%PR_NUMBER% ^
                       --set minikubeIp=%MINIKUBE_IP%
